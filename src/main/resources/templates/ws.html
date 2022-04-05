@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<!--<html lang="en">-->
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Spring Boot+WebSocket+广播式</title>
+</head>
+<body onload="disconnect()">
+<noscript>
+    <h2 style="color: #ff0000">貌似你的浏览器不支持websocket</h2>
+</noscript>
+
+<div>
+    <div>
+        　　<button id="connect" onclick="connect();">connect连接</button>
+        　　<button id="disconnect" disabled="disabled" onclick="disconnect();">断开连接</button>
+    </div>
+
+    <div id="conversationDiv">
+        <label>输入名字</label><input type="text" id="name"/>
+        <button id ="sendName" onclick="sendName();">发送</button>
+        <p id="response"></p>
+    </div>
+
+</div>
+
+<script th:src="@{https://cdn.bootcdn.net/ajax/libs/sockjs-client/1.5.0/sockjs.min.js}"></script>
+<script th:src="@{https://cdn.bootcdn.net/ajax/libs/stomp.js/2.3.3/stomp.min.js}"></script>
+<script th:src="@{https://cdn.bootcdn.net/ajax/libs/jquery/3.5.1/jquery.min.js}"></script>
+<script>
+    var stompClient = null;
+    function setConnect(connected) {
+        document.getElementById('connect').disabled = connected;
+        document.getElementById('disconnect').disabled = !connected;
+        document.getElementById('conversationDiv').style.visibility = connected ? 'visible':'hidden';
+        $('#response').html();
+    }
+
+    function connect(){
+        //若前后端分离,url要写全，若在一个项目内，只写/websocket/server就行
+        var url = "http://ip:8080/websocket/server"
+
+        var socket = new SockJS('/endpointWisely'); //链接SockJS的endpoint
+
+        stompClient = Stomp.over(socket);//使用stomp子协议的WebSocket 客户端
+
+        stompClient.connect({}, function(frame) {//链接Web Socket的服务端。
+            setConnect(true);
+            console.log('开始连接===Connected: ' + frame);
+            //广播式发送，订阅地址不需要加唯一标识；点对点发送，可自定义唯一标识
+            var subUrl= '/topic/getResponse';
+            stompClient.subscribe(subUrl, function(respnose){ //订阅/topic/getResponse 目标发送的消息。这个是在控制器的@SendTo中定义的。
+                console.log('回应===response+'+respnose.body)
+                showResponse(JSON.parse(respnose.body).responseMessage);
+            });
+        });
+    }
+
+    function disconnect() {
+        if (stompClient != null){
+            stompClient.disconnect();
+        }
+        setConnect(false);
+        console.log("================Disconnected");
+    }
+
+    function sendName() {
+        var name = $('#name').val();
+        stompClient.send("/welcome",{},JSON.stringify({'name':name}));
+    }
+
+    function showResponse(message) {
+
+        var response = $("#response");
+        console.log('showResponse====='+message);
+        response.html(message);
+    }
+
+</script>
+
+
+</body>
+</html>

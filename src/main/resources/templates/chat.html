@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<!--<html lang="en">-->
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Home</title>
+    <script th:src="@{https://cdn.bootcdn.net/ajax/libs/sockjs-client/1.5.0/sockjs.min.js}"></script>
+    <script th:src="@{https://cdn.bootcdn.net/ajax/libs/stomp.js/2.3.3/stomp.min.js}"></script>
+    <script th:src="@{https://cdn.bootcdn.net/ajax/libs/jquery/3.5.1/jquery.min.js}"></script>
+</head>
+<body>
+<p>聊天室</p>
+
+<form id="wiselyForm">
+    <textarea rows="4" cols="60" name="text"></textarea>
+    <input type="submit"/>
+</form>
+
+<script th:inline="javascript">
+    $('#wiselyForm').submit(function (e) {
+        e.preventDefault();
+        var text = $('#wiselyForm').find('textarea[name="text"]').val();
+
+        console.log("发送的参数: "+text)
+        sendSpittle(text);
+    });
+
+    //
+    var socket = new SockJS('/endpointChat');
+    var stompClient = Stomp.over(socket);
+
+    stompClient.connect('guest','guest',function (frame) {
+        //
+        stompClient.subscribe("/user/queue/notifications",handleNotifications);
+    })
+
+    function handleNotifications(message) {
+        $('#output').append("<b>Received: "+message.body+"</b><br/>");
+    }
+
+    function sendSpittle(text) {
+        //
+        stompClient.send("/chat",{},text);
+    }
+
+    $('#stop').click(function () {
+        socket.close();
+    });
+
+</script>
+
+<div id="output"></div>
+
+</body>
+</html>
